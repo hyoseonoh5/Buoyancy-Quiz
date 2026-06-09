@@ -468,67 +468,29 @@
       </div>
     </div>
 
-    <!-- 채점 버튼 -->
-    <button class="btn-primary" id="grade-btn">채점하기</button>
-
-    <!-- 로딩 -->
-    <div class="loading-bar" id="loading">
-      AI가 답안을 채점하는 중<span class="dot-ani"></span>
-    </div>
+    <!-- 확인 및 제출 버튼 -->
+    <button class="btn-primary" id="review-btn">답안 확인 후 제출하기</button>
   </div>
 
-  <!-- 채점 결과 -->
+  <!-- 제출 전 확인 -->
   <div class="result-wrap" id="result-wrap">
-
-    <!-- 총점 배너 -->
-    <div class="score-banner">
-      <div>
-        <span class="score-big" id="total-num">0</span>
-        <span class="score-denom"> / 3점</span>
-      </div>
-      <p class="score-msg" id="score-msg"></p>
-    </div>
-
-    <!-- 소문항 1 결과 -->
     <div class="result-card">
       <div class="rc-header">
-        <span class="rc-title">소문항 1) 부등호 비교</span>
-        <span class="chip" id="q1-chip"></span>
-        <span class="chip score" id="q1-score-chip"></span>
+        <span class="rc-title">📋 제출 전 답안 확인</span>
+      </div>
+      <div class="ans-row" style="margin-bottom:10px">
+        <span class="ans-lbl">학생 정보</span>
+        <span class="ans-val" id="confirm-info"></span>
+      </div>
+      <div class="ans-row" style="margin-bottom:10px">
+        <span class="ans-lbl">소문항 1)</span>
+        <span class="ans-val" id="confirm-q1"></span>
       </div>
       <div class="ans-row">
-        <span class="ans-lbl">내 답안</span>
-        <span class="ans-val" id="q1-my"></span>
-      </div>
-      <div class="ans-row" id="q1-correct-row" style="display:none">
-        <span class="ans-lbl">정답</span>
-        <span class="ans-val model">중력: (가) &lt; (나) &nbsp;/&nbsp; 부력: (가) &lt; (나)</span>
+        <span class="ans-lbl">소문항 2)</span>
+        <span class="ans-val" id="confirm-q2" style="white-space:pre-wrap;"></span>
       </div>
     </div>
-
-    <!-- 소문항 2 결과 -->
-    <div class="result-card">
-      <div class="rc-header">
-        <span class="rc-title">소문항 2) 논술형 서술</span>
-        <span class="chip" id="q2-chip"></span>
-        <span class="chip score" id="q2-score-chip"></span>
-      </div>
-      <div class="ans-row">
-        <span class="ans-lbl">내 답안</span>
-        <span class="ans-val" id="q2-my"></span>
-      </div>
-      <div class="crit-list">
-        <div class="crit-item" id="crit1"><span class="crit-icon">○</span><span>① 짐으로 인해 (나)의 중력이 (가)보다 크다</span></div>
-        <div class="crit-item" id="crit2"><span class="crit-icon">○</span><span>② (나)의 물에 잠긴 부피가 (가)보다 크다</span></div>
-        <div class="crit-item" id="crit3"><span class="crit-icon">○</span><span>③ 중력과 부력이 같아 힘의 평형을 이룬다</span></div>
-      </div>
-      <div class="ans-row">
-        <span class="ans-lbl">모범답안</span>
-        <span class="ans-val model">(나) 배는 짐을 실었기 때문에 (가) 배보다 중력이 크다. 중력이 클수록 배가 더 많이 가라앉아 물에 잠긴 부피가 (가)보다 크므로 부력도 커진다. 두 배 모두 중력과 부력의 크기가 같아 힘의 평형을 이루기 때문에 떠 있을 수 있다.</span>
-      </div>
-    </div>
-
-    <!-- 다시 고치기 / 최종 제출 -->
     <button class="btn-secondary" id="revise-btn" style="margin-bottom:.75rem">✏️ 답안 다시 고치기</button>
     <button class="btn-danger" id="submit-btn">최종 제출하기</button>
     <p style="font-size:12px; color:var(--hint); text-align:center; margin-top:8px;">제출 후에는 수정 및 재제출이 불가합니다.</p>
@@ -544,7 +506,6 @@
 </div><!-- /wrap -->
 
 <script>
-// ── 설정: Apps Script 배포 URL을 여기에 붙여넣으세요 ──
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaEAi0bBCIo1lVJQDpozU2JOuFUoogPTs2byuAD6lrg-sjWrawT2UsNbLiLtpOBq50Aw/exec';
 
 // ── 심볼 버튼 토글 ──
@@ -567,8 +528,8 @@ const essayEl = document.getElementById('essay-input');
 const charEl  = document.getElementById('char-count');
 essayEl.addEventListener('input', () => charEl.textContent = essayEl.value.length + '자');
 
-// ── 채점 ──
-document.getElementById('grade-btn').addEventListener('click', async () => {
+// ── 답안 확인 화면으로 이동 ──
+document.getElementById('review-btn').addEventListener('click', () => {
   const ban  = document.getElementById('sel-ban').value;
   const num  = document.getElementById('sel-num').value;
   const name = document.getElementById('inp-name').value.trim();
@@ -578,125 +539,37 @@ document.getElementById('grade-btn').addEventListener('click', async () => {
   if (!gravityVal || !buoyancyVal) { alert('중력과 부력 비교를 모두 선택해 주세요.'); return; }
   if (essay.length < 10) { alert('소문항 2) 답안을 더 작성해 주세요.'); return; }
 
-  document.getElementById('grade-btn').disabled = true;
-  document.getElementById('loading').style.display = 'block';
-
-  try {
-    const criteria = await gradeEssay(essay);
-    showResult(ban, num, name, essay, criteria);
-  } catch(e) {
-    alert('채점 중 오류가 발생했습니다. 다시 시도해 주세요.');
-    document.getElementById('grade-btn').disabled = false;
-  } finally {
-    document.getElementById('loading').style.display = 'none';
-  }
-});
-
-async function gradeEssay(text) {
-  const prompt = `당신은 중학교 1학년 과학 교사입니다. 아래 채점 기준에 따라 학생 답안을 채점하세요.
-
-[채점 기준 - 각 항목 충족 여부를 true/false로 판단]
-① 짐(화물)을 실었기 때문에 (나) 배의 중력(또는 무게)이 (가) 배보다 크다는 내용이 포함되어 있다.
-② (나) 배가 물에 잠긴 부피가 (가) 배보다 크다는 내용이 포함되어 있다. (더 가라앉는다, 잠긴 깊이가 깊다 등 동등한 표현 포함)
-③ 중력과 부력이 같다(평형을 이룬다, 균형을 이룬다)는 내용이 포함되어 있다.
-
-[학생 답안]
-${text}
-
-반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트 없이:
-{"c1": true/false, "c2": true/false, "c3": true/false}`;
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 100,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-  const data = await res.json();
-  const raw = data.content.map(i => i.text || '').join('').replace(/```json|```/g, '').trim();
-  return JSON.parse(raw);
-}
-
-let lastCriteria = null;
-
-function showResult(ban, num, name, essay, criteria) {
-  lastCriteria = criteria;
-
-  const q1 = (gravityVal === '<' && buoyancyVal === '<') ? 1 : 0;
-  const met = [criteria.c1, criteria.c2, criteria.c3].filter(Boolean).length;
-  const q2 = met >= 3 ? 2 : met >= 2 ? 1 : 0;
-  const total = q1 + q2;
-
-  document.getElementById('total-num').textContent = total;
-  document.getElementById('score-msg').textContent = [
-    '📖 부력과 중력의 관계를 교과서에서 복습해 보세요.',
-    '✏️ 핵심 개념을 다시 확인해 보세요.',
-    '👍 잘 했어요! 한 가지만 더 보완하면 만점이에요.',
-    '🎉 완벽합니다! 세 가지 조건을 모두 충족했어요.'
-  ][total];
-
-  // 소문항 1
-  setChip('q1-chip', q1 === 1 ? 'correct' : 'wrong', q1 === 1 ? '정답' : '오답');
-  document.getElementById('q1-score-chip').textContent = q1 + '/1점';
-  document.getElementById('q1-my').textContent =
-    '중력: (가) ' + (gravityVal||'?') + ' (나) / 부력: (가) ' + (buoyancyVal||'?') + ' (나)';
-  document.getElementById('q1-correct-row').style.display = q1 === 0 ? 'flex' : 'none';
-
-  // 소문항 2
-  const q2Label = q2 === 2 ? 'correct' : q2 === 1 ? 'partial' : 'wrong';
-  const q2Text  = q2 === 2 ? '정답' : q2 === 1 ? '부분 정답' : '오답';
-  setChip('q2-chip', q2Label, q2Text);
-  document.getElementById('q2-score-chip').textContent = q2 + '/2점';
-  document.getElementById('q2-my').textContent = essay;
-  setCrit('crit1', criteria.c1);
-  setCrit('crit2', criteria.c2);
-  setCrit('crit3', criteria.c3);
+  document.getElementById('confirm-info').textContent = `${ban} ${num}번 ${name}`;
+  document.getElementById('confirm-q1').textContent =
+    `중력: (가) ${gravityVal} (나) / 부력: (가) ${buoyancyVal} (나)`;
+  document.getElementById('confirm-q2').textContent = essay;
 
   document.getElementById('quiz-wrap').style.display = 'none';
   document.getElementById('result-wrap').style.display = 'block';
   window.scrollTo(0, 0);
-}
-
-function setChip(id, cls, text) {
-  const el = document.getElementById(id);
-  el.className = 'chip ' + cls;
-  el.textContent = text;
-}
-
-function setCrit(id, met) {
-  const el = document.getElementById(id);
-  el.className = 'crit-item ' + (met ? 'met' : 'unmet');
-  el.querySelector('.crit-icon').textContent = met ? '✔' : '✘';
-}
+});
 
 // ── 다시 고치기 ──
 document.getElementById('revise-btn').addEventListener('click', () => {
   document.getElementById('result-wrap').style.display = 'none';
   document.getElementById('quiz-wrap').style.display = 'block';
-  document.getElementById('grade-btn').disabled = false;
   window.scrollTo(0, 0);
 });
 
 // ── 최종 제출 ──
 document.getElementById('submit-btn').addEventListener('click', async () => {
-  const ban   = document.getElementById('sel-ban').value;
-  const num   = document.getElementById('sel-num').value;
-  const name  = document.getElementById('inp-name').value.trim();
+  const ban  = document.getElementById('sel-ban').value;
+  const num  = document.getElementById('sel-num').value;
+  const name = document.getElementById('inp-name').value.trim();
   const essay = essayEl.value.trim();
-
   const q1 = (gravityVal === '<' && buoyancyVal === '<') ? 1 : 0;
-  const met = [lastCriteria.c1, lastCriteria.c2, lastCriteria.c3].filter(Boolean).length;
-  const q2 = met >= 3 ? 2 : met >= 2 ? 1 : 0;
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.textContent = '제출 중…';
 
   try {
-    const res = await fetch(SCRIPT_URL, {
+    await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
@@ -704,15 +577,15 @@ document.getElementById('submit-btn').addEventListener('click', async () => {
         반: ban, 번호: num, 이름: name,
         gravity: gravityVal, buoyancy: buoyancyVal,
         q1Score: q1, essay: essay,
-        c1: lastCriteria.c1, c2: lastCriteria.c2, c3: lastCriteria.c3,
-        q2Score: q2, totalScore: q1 + q2
+        c1: null, c2: null, c3: null,
+        q2Score: null, totalScore: null
       })
     });
 
     document.getElementById('result-wrap').style.display = 'none';
     document.getElementById('submit-done').style.display = 'block';
     document.getElementById('done-msg').textContent =
-      `${ban} ${num}번 ${name} 학생의 답안이 제출되었습니다.\n총점: ${q1+q2}/3점`;
+      `${ban} ${num}번 ${name} 학생의 답안이 제출되었습니다.`;
     window.scrollTo(0, 0);
 
   } catch(e) {
